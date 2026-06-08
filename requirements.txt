@@ -1,6 +1,6 @@
 flask==3.0.0
 werkzeug==3.0.1
-numpy==1.26.0
+numpy
 schedule==1.2.0
 yt-dlp==2023.12.30
 pytest==7.4.0
