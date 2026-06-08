@@ -197,12 +197,25 @@ class ClipForgeApp {
 
             const scoreColor = segment.score > 80 ? '#24CFA4' : 
                               segment.score > 60 ? '#f59e0b' : '#ef4444';
+            
+            // Форматируем время
+            const startTime = this.formatTime(segment.start);
+            const endTime = this.formatTime(segment.start + segment.duration);
 
             div.innerHTML = `
                 <div class="segment-score" style="background: ${scoreColor}">${segment.score}</div>
                 <div class="segment-info">
                     <div class="segment-title">Момент ${index + 1}</div>
-                    <div class="segment-meta">${segment.start}s - ${segment.duration}s | Тип: ${segment.type}</div>
+                    <div class="segment-meta">${startTime} - ${endTime} | Длительность: ${segment.duration.toFixed(1)}с | Тип: ${segment.type}</div>
+                    <div class="segment-reason">${segment.reason || ''}</div>
+                </div>
+                <div class="segment-preview">
+                    <button class="btn-preview" onclick="event.stopPropagation(); app.previewSegment(${index})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Предпросмотр
+                    </button>
                 </div>
             `;
 
@@ -223,6 +236,114 @@ class ClipForgeApp {
         // Setup create buttons
         document.getElementById('create-all-btn').onclick = () => this.createAllClips();
         document.getElementById('create-selected-btn').onclick = () => this.createSelectedClips();
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    previewSegment(index) {
+        const segment = this.segments[index];
+        if (!this.currentVideo) {
+            alert('Видео не загружено');
+            return;
+        }
+        
+        // Создаем модальное окно для предпросмотра
+        const modal = document.createElement('div');
+        modal.className = 'preview-modal';
+        modal.innerHTML = `
+            <div class="preview-modal-overlay" onclick="this.closest('.preview-modal').remove()"></div>
+            <div class="preview-modal-content">
+                <div class="preview-modal-header">
+                    <h3>Предпросмотр: Момент ${index + 1}</h3>
+                    <button class="preview-modal-close" onclick="this.closest('.preview-modal').remove()">&times;</button>
+                </div>
+                <div class="preview-modal-body">
+                    <div class="preview-video-wrapper">
+                        <video id="preview-video" controls autoplay></video>
+                    </div>
+                    <div class="preview-info">
+                        <div class="preview-time">
+                            <span>Начало: ${this.formatTime(segment.start)}</span>
+                            <span>Длительность: ${segment.duration.toFixed(1)}с</span>
+                            <span>Конец: ${this.formatTime(segment.start + segment.duration)}</span>
+                        </div>
+                        <div class="preview-score">
+                            <span style="color: ${segment.score > 80 ? '#24CFA4' : segment.score > 60 ? '#f59e0b' : '#ef4444'}">
+                                Вирусность: ${segment.score}/100
+                            </span>
+                        </div>
+                        <div class="preview-type">Тип: ${segment.type}</div>
+                        <div class="preview-reason">${segment.reason || ''}</div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn btn-primary" onclick="app.createClipFromPreview(${index}); this.closest('.preview-modal').remove()">
+                            Создать клип
+                        </button>
+                        <button class="btn btn-secondary" onclick="this.closest('.preview-modal').remove()">
+                            Закрыть
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Устанавливаем источник видео и позицию
+        const video = modal.querySelector('#preview-video');
+        video.src = `/uploads/${this.currentVideo.filename}`;
+        video.currentTime = segment.start;
+        
+        // Автоматически останавливаем после окончания сегмента
+        const stopTime = segment.start + segment.duration;
+        const checkTime = () => {
+            if (video.currentTime >= stopTime) {
+                video.pause();
+                video.removeEventListener('timeupdate', checkTime);
+            }
+        };
+        video.addEventListener('timeupdate', checkTime);
+        
+        // Загружаем видео
+        video.load();
+        video.play().catch(e => console.log('Auto-play prevented:', e));
+    }
+    
+    async createClipFromPreview(index) {
+        const segment = this.segments[index];
+        this.showModal('Создание клипа...');
+        
+        try {
+            const response = await fetch('/api/create-clip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: this.currentVideo.filename,
+                    start: segment.start,
+                    duration: segment.duration,
+                    score: segment.score,
+                    type: segment.type
+                })
+            });
+            
+            const result = await response.json();
+            this.hideModal();
+            
+            if (result.status === 'ok') {
+                alert('Клип создан успешно!');
+                this.loadClips();
+                this.loadStats();
+            } else {
+                alert('Ошибка создания клипа: ' + result.error);
+            }
+        } catch (e) {
+            this.hideModal();
+            alert('Ошибка: ' + e.message);
+        }
     }
 
     async createAllClips() {
