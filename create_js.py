@@ -127,6 +127,10 @@ class ClipForgeApp {
                 progressFill.style.width = '100%';
                 progressText.textContent = '100%';
                 this.currentVideo = result;
+                
+                // Показываем предпросмотр видео
+                this.showVideoPreview(result);
+                
                 setTimeout(() => {
                     this.analyzeVideo(result.filename);
                 }, 500);
@@ -161,6 +165,22 @@ class ClipForgeApp {
             this.hideModal();
             alert('Analysis error: ' + e.message);
         }
+    }
+
+    showVideoPreview(videoData) {
+        const container = document.getElementById('video-preview-container');
+        const video = document.getElementById('video-preview');
+        const info = document.getElementById('video-info');
+        
+        video.src = `/uploads/${videoData.filename}`;
+        video.load();
+        
+        info.innerHTML = `
+            <span>${videoData.original_name}</span>
+            <span>${(videoData.size / 1024 / 1024).toFixed(1)} MB</span>
+        `;
+        
+        container.style.display = 'block';
     }
 
     showSegments(segments) {
@@ -277,7 +297,10 @@ class ClipForgeApp {
 
         const clipsHtml = clips.map(clip => `
             <div class="clip-card" data-id="${clip.id}">
-                <div class="clip-preview">${clip.duration || '15'}с</div>
+                <div class="clip-preview-video">
+                    <video src="${clip.url}" preload="metadata" muted></video>
+                    <div class="clip-preview-overlay">${clip.duration || '15'}с</div>
+                </div>
                 <div class="clip-title">${clip.filename}</div>
                 <div class="clip-meta">
                     <span>${(clip.size / 1024 / 1024).toFixed(1)} MB</span>

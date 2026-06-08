@@ -380,7 +380,7 @@ def create_clip():
         '-ss', str(start),
         '-t', str(duration),
         # Вертикальный формат 9:16, 1080x1920
-        '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black',
+        '-vf', 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gaussblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto',
         # Высокое качество видео
         '-c:v', 'libx264',
         '-crf', '18',  # Высокое качество (0-51, меньше = лучше, 18 = почти без потерь)
@@ -402,7 +402,7 @@ def create_clip():
         filters = get_ap_filters(ap_config.get('intensity', 'auto'))
         
         # Объединяем вертикальный формат с АП-фильтрами
-        vf_filters = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black'
+        vf_filters = 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gaussblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto'
         
         # Добавляем АП-фильтры если есть
         if filters.get('video_filters'):
@@ -439,6 +439,19 @@ def create_clip():
     
     try:
         subprocess.run(cmd, check=True, capture_output=True)
+        
+        # Добавляем субтитры автоматически
+        try:
+            from subtitle_generator import add_subtitles_to_clip
+            subtitled_path = output_path.with_name(f"subtitled_{output_name}")
+            add_subtitles_to_clip(str(output_path), str(subtitled_path), language='auto')
+            # Заменяем оригинальный файл на версию с субтитрами
+            if subtitled_path.exists():
+                output_path.unlink()
+                subtitled_path.rename(output_path)
+                output_name = f"subtitled_{output_name}"
+        except Exception as e:
+            logger.warning(f"Subtitle generation failed: {e}")
         
         # Логируем создание клипа
         file_size = output_path.stat().st_size

@@ -136,6 +136,14 @@ html_content = '''<!DOCTYPE html>
                         </div>
                         <div class="progress-text" id="progress-text">0%</div>
                     </div>
+                    
+                    <!-- Предпросмотр видео -->
+                    <div class="video-preview-container" id="video-preview-container" style="display: none;">
+                        <div class="video-preview-wrapper">
+                            <video id="video-preview" controls></video>
+                        </div>
+                        <div class="video-info" id="video-info"></div>
+                    </div>
                 </div>
 
                 <div class="card">
