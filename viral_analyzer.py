@@ -20,9 +20,45 @@ class ViralAnalyzer:
         """Комплексный анализ видео для поиска вирусных моментов"""
         segments = []
         
+        # Проверяем что файл существует и не пустой
+        if not os.path.exists(video_path):
+            logger.error(f"Video file does not exist: {video_path}")
+            return [{
+                'start': 0,
+                'duration': min_duration,
+                'score': 50,
+                'type': 'fallback',
+                'reason': 'Файл не найден'
+            }]
+        
+        file_size = os.path.getsize(video_path)
+        if file_size == 0:
+            logger.error(f"Video file is empty: {video_path}")
+            return [{
+                'start': 0,
+                'duration': min_duration,
+                'score': 50,
+                'type': 'fallback',
+                'reason': 'Файл пустой'
+            }]
+        
+        # Проверяем что файл является валидным видео
+        try:
+            probe = subprocess.run([
+                'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+                '-of', 'json', video_path
+            ], capture_output=True, text=True, timeout=30)
+            
+            if probe.returncode != 0:
+                logger.error(f"File is not a valid video: {probe.stderr[:200]}")
+                # Пробуем исправить файл
+                return self._try_repair_and_analyze(video_path, min_duration, max_duration)
+        except Exception as e:
+            logger.warning(f"Could not validate video: {e}")
+        
         # Получаем длительность видео
         total_duration = self._get_video_duration(video_path)
-        logger.info(f"Analyzing video: {video_path}, duration: {total_duration:.1f}s")
+        logger.info(f"Analyzing video: {video_path}, duration: {total_duration:.1f}s, size: {file_size} bytes")
         
         # 1. Анализ аудио (пики громкости, смех)
         audio_segments = self._analyze_audio(video_path, min_duration, max_duration)
@@ -69,6 +105,55 @@ class ViralAnalyzer:
         logger.info(f"Total unique segments after merge: {len(unique_segments)}")
         return unique_segments[:20]
     
+    def _try_repair_and_analyze(self, video_path, min_duration, max_duration):
+        """Пробует исправить поврежденный файл и проанализировать его"""
+        try:
+            from pathlib import Path
+            video_path_obj = Path(video_path)
+            fixed_path = video_path_obj.with_suffix('.fixed.mp4')
+            
+            logger.info(f"Attempting to repair corrupted video: {video_path}")
+            
+            # Пробуем исправить через ffmpeg
+            repair_result = subprocess.run([
+                'ffmpeg', '-y', '-i', video_path,
+                '-c', 'copy', '-movflags', '+faststart',
+                str(fixed_path)
+            ], capture_output=True, text=True, timeout=120)
+            
+            if repair_result.returncode == 0 and fixed_path.exists() and fixed_path.stat().st_size > 0:
+                # Проверяем что исправленный файл валиден
+                probe = subprocess.run([
+                    'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                    '-of', 'json', str(fixed_path)
+                ], capture_output=True, text=True, timeout=30)
+                
+                if probe.returncode == 0:
+                    # Заменяем оригинальный файл
+                    video_path_obj.unlink()
+                    fixed_path.rename(video_path)
+                    logger.info(f"Video repaired successfully, re-analyzing: {video_path}")
+                    
+                    # Перезапускаем анализ
+                    return self.analyze_video(video_path, min_duration, max_duration)
+                else:
+                    fixed_path.unlink()
+            else:
+                if fixed_path.exists():
+                    fixed_path.unlink()
+        except Exception as e:
+            logger.error(f"Repair failed: {e}")
+        
+        # Если не удалось исправить, возвращаем fallback
+        logger.error("Could not repair video, returning fallback segment")
+        return [{
+            'start': 0,
+            'duration': min_duration,
+            'score': 50,
+            'type': 'fallback',
+            'reason': 'Видео повреждено и не удалось исправить'
+        }]
+
     def _get_video_duration(self, video_path):
         """Получает длительность видео через ffprobe"""
         try:

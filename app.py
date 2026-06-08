@@ -280,12 +280,56 @@ def download_url():
         if not output_path.exists():
             return jsonify({"error": "Файл не был загружен"}), 500
         
+        # Проверяем что файл не пустой и не поврежден
+        file_size = output_path.stat().st_size
+        if file_size == 0:
+            output_path.unlink()
+            return jsonify({"error": "Загружен пустой файл"}), 500
+        
+        # Проверяем что файл является валидным видео через ffprobe
+        try:
+            probe_result = subprocess.run([
+                'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+                '-of', 'json', str(output_path)
+            ], capture_output=True, text=True, timeout=30)
+            
+            if probe_result.returncode != 0:
+                # Файл поврежден — пробуем исправить через ffmpeg
+                logger.warning(f"Downloaded file appears corrupted, attempting repair: {output_path}")
+                fixed_path = output_path.with_suffix('.fixed.mp4')
+                repair_result = subprocess.run([
+                    'ffmpeg', '-y', '-i', str(output_path),
+                    '-c', 'copy', '-movflags', '+faststart',
+                    str(fixed_path)
+                ], capture_output=True, text=True, timeout=120)
+                
+                if repair_result.returncode == 0 and fixed_path.exists() and fixed_path.stat().st_size > 0:
+                    output_path.unlink()
+                    fixed_path.rename(output_path)
+                    logger.info(f"File repaired successfully: {output_path}")
+                else:
+                    output_path.unlink()
+                    if fixed_path.exists():
+                        fixed_path.unlink()
+                    return jsonify({"error": "Загруженный файл поврежден и не удалось исправить. Попробуйте другой URL или используйте cookies."}), 500
+            else:
+                probe_data = json.loads(probe_result.stdout)
+                duration = float(probe_data.get('format', {}).get('duration', 0))
+                if duration < 1:
+                    output_path.unlink()
+                    return jsonify({"error": f"Видео слишком короткое ({duration:.1f}с). Минимум 1 секунда."}), 400
+        except Exception as e:
+            logger.warning(f"Could not validate video file: {e}")
+            # Не удалось проверить — продолжаем с предупреждением
+        
         return jsonify({
             "status": "ok",
             "filename": output_name,
             "original_name": output_name,
             "path": str(output_path),
-            "url": url
+            "url": url,
+            "size": file_size,
+            "duration": duration if 'duration' in locals() else None
         })
         
     except subprocess.TimeoutExpired:
