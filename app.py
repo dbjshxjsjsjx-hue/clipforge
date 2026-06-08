@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 import uuid
+import logging
 
 # Импорт наших модулей
 from viral_analyzer import analyze_video_viral
@@ -19,6 +20,13 @@ from playlist_processor import process_url, download_video, download_playlist, p
 from scheduler import get_scheduler_status, add_scheduled_upload, remove_scheduled_upload, get_scheduled_uploads, start_scheduler, stop_scheduler
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 
 # Директории
@@ -642,6 +650,19 @@ def video_info():
     
     result = get_video_info(url)
     return jsonify(result)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Resource not found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
+
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({"error": "Bad request"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

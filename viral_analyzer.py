@@ -136,7 +136,7 @@ class ViralAnalyzer:
                     try:
                         time_str = line.split('pts_time:')[1].split()[0]
                         scene_changes.append(float(time_str))
-                    except:
+                    except (IndexError, ValueError):
                         pass
             
             # Создаем сегменты вокруг смен сцен
@@ -234,7 +234,7 @@ class ViralAnalyzer:
             
             info = json.loads(result.stdout)
             total_duration = float(info['format']['duration'])
-        except:
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError, ValueError):
             total_duration = 0
         
         # Факторы вирусности:
