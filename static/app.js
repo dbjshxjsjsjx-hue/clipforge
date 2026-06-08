@@ -45,6 +45,45 @@ class ClipForgeApp {
             document.getElementById('zoom-value').textContent = (this.config.ap_settings.zoom || 0) + '%';
             document.getElementById('color-value').textContent = (this.config.ap_settings.color_shift || 0) + '%';
         }
+
+        // Apply subtitle settings
+        if (this.config.subtitle_settings) {
+            const ss = this.config.subtitle_settings;
+            const style = ss.style || {};
+            
+            const subtitlesEnabled = document.getElementById('subtitles-enabled');
+            if (subtitlesEnabled) subtitlesEnabled.checked = ss.enabled !== false;
+            
+            const subtitleFont = document.getElementById('subtitle-font');
+            if (subtitleFont && style.fontname) subtitleFont.value = style.fontname;
+            
+            const subtitleSize = document.getElementById('subtitle-size');
+            if (subtitleSize && style.fontsize) subtitleSize.value = parseInt(style.fontsize);
+            
+            const subtitleSizeValue = document.getElementById('subtitle-size-value');
+            if (subtitleSizeValue && style.fontsize) subtitleSizeValue.textContent = style.fontsize;
+            
+            const subtitleOutline = document.getElementById('subtitle-outline');
+            if (subtitleOutline && style.outline) subtitleOutline.value = parseInt(style.outline);
+            
+            const subtitleOutlineValue = document.getElementById('subtitle-outline-value');
+            if (subtitleOutlineValue && style.outline) subtitleOutlineValue.textContent = style.outline;
+            
+            const subtitleMargin = document.getElementById('subtitle-margin');
+            if (subtitleMargin && style.marginv) subtitleMargin.value = parseInt(style.marginv);
+            
+            const subtitleMarginValue = document.getElementById('subtitle-margin-value');
+            if (subtitleMarginValue && style.marginv) subtitleMarginValue.textContent = style.marginv;
+            
+            const subtitleBold = document.getElementById('subtitle-bold');
+            if (subtitleBold) subtitleBold.checked = style.bold !== '0';
+            
+            const subtitleAnimated = document.getElementById('subtitle-animated');
+            if (subtitleAnimated) subtitleAnimated.checked = ss.animated || false;
+            
+            // Update preview
+            this.updateSubtitlePreview();
+        }
     }
 
     setupTabs() {
@@ -325,6 +364,9 @@ class ClipForgeApp {
     async createClips(indices) {
         this.showModal('Создание клипов...');
 
+        // Get subtitle settings from UI
+        const subtitleSettings = this.getSubtitleSettings();
+
         for (const index of indices) {
             const segment = this.segments[index];
             document.getElementById('processing-text').textContent = 
@@ -339,7 +381,9 @@ class ClipForgeApp {
                         start: segment.start,
                         duration: segment.duration,
                         score: segment.score,
-                        type: segment.type
+                        type: segment.type,
+                        subtitles: subtitleSettings.enabled,
+                        subtitle_style: subtitleSettings.style
                     })
                 });
             } catch (e) {
@@ -351,6 +395,45 @@ class ClipForgeApp {
         this.loadClips();
         this.loadStats();
         alert('Клипы созданы!');
+    }
+
+    getSubtitleSettings() {
+        const enabled = document.getElementById('subtitles-enabled')?.checked ?? true;
+        const font = document.getElementById('subtitle-font')?.value ?? 'Arial Black';
+        const size = parseInt(document.getElementById('subtitle-size')?.value ?? 48);
+        const color = document.getElementById('subtitle-color')?.value ?? '#FFFFFF';
+        const outlineColor = document.getElementById('subtitle-outline-color')?.value ?? '#000000';
+        const outline = parseInt(document.getElementById('subtitle-outline')?.value ?? 4);
+        const margin = parseInt(document.getElementById('subtitle-margin')?.value ?? 100);
+        const bold = document.getElementById('subtitle-bold')?.checked ?? true;
+        const animated = document.getElementById('subtitle-animated')?.checked ?? false;
+
+        // Convert hex color to ASS format (BGR)
+        const hexToAss = (hex) => {
+            const r = hex.slice(1, 3);
+            const g = hex.slice(3, 5);
+            const b = hex.slice(5, 7);
+            return `\u0026H00${b}${g}${r}`.toUpperCase();
+        };
+
+        return {
+            enabled,
+            style: {
+                fontname: font,
+                fontsize: String(size),
+                primarycolour: hexToAss(color),
+                outlinecolour: hexToAss(outlineColor),
+                backcolour: '\u0026H00000000',
+                bold: bold ? '1' : '0',
+                italic: '0',
+                borderstyle: '1',
+                outline: String(outline),
+                shadow: '2',
+                alignment: '2',
+                marginv: String(margin)
+            },
+            animated
+        };
     }
 
     async loadClips() {
@@ -458,6 +541,46 @@ class ClipForgeApp {
             });
         });
 
+        // Subtitle sliders
+        const subtitleSliders = ['subtitle-size', 'subtitle-outline', 'subtitle-margin'];
+        subtitleSliders.forEach(id => {
+            const slider = document.getElementById(id);
+            const valueDisplay = document.getElementById(id + '-value');
+            if (slider && valueDisplay) {
+                slider.addEventListener('input', () => {
+                    valueDisplay.textContent = slider.value;
+                    this.updateSubtitlePreview();
+                });
+            }
+        });
+
+        // Subtitle color pickers
+        const colorInputs = ['subtitle-color', 'subtitle-outline-color'];
+        colorInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', () => {
+                    this.updateSubtitlePreview();
+                });
+            }
+        });
+
+        // Subtitle font selector
+        const fontSelect = document.getElementById('subtitle-font');
+        if (fontSelect) {
+            fontSelect.addEventListener('change', () => {
+                this.updateSubtitlePreview();
+            });
+        }
+
+        // Subtitle bold toggle
+        const boldToggle = document.getElementById('subtitle-bold');
+        if (boldToggle) {
+            boldToggle.addEventListener('change', () => {
+                this.updateSubtitlePreview();
+            });
+        }
+
         // Toggles
         const toggles = ['ap-enabled', 'mirror', 'add-border', 'audio-pitch', 'auto-ap'];
         toggles.forEach(id => {
@@ -470,6 +593,24 @@ class ClipForgeApp {
         document.getElementById('save-settings').addEventListener('click', () => {
             this.saveSettings();
         });
+    }
+
+    updateSubtitlePreview() {
+        const preview = document.getElementById('subtitle-preview-text');
+        if (!preview) return;
+
+        const font = document.getElementById('subtitle-font')?.value ?? 'Arial Black';
+        const size = document.getElementById('subtitle-size')?.value ?? 48;
+        const color = document.getElementById('subtitle-color')?.value ?? '#FFFFFF';
+        const outlineColor = document.getElementById('subtitle-outline-color')?.value ?? '#000000';
+        const outline = document.getElementById('subtitle-outline')?.value ?? 4;
+        const bold = document.getElementById('subtitle-bold')?.checked ?? true;
+
+        preview.style.fontFamily = font + ', Arial, sans-serif';
+        preview.style.fontSize = size + 'px';
+        preview.style.color = color;
+        preview.style.textShadow = `${outline}px ${outline}px 0 ${outlineColor}, -${outline}px -${outline}px 0 ${outlineColor}, ${outline}px -${outline}px 0 ${outlineColor}, -${outline}px ${outline}px 0 ${outlineColor}`;
+        preview.style.fontWeight = bold ? 'bold' : 'normal';
     }
 
     updateProtectionLevel() {
@@ -499,6 +640,8 @@ class ClipForgeApp {
     }
 
     async saveSettings() {
+        const subtitleSettings = this.getSubtitleSettings();
+        
         const config = {
             ap_settings: {
                 enabled: document.getElementById('ap-enabled').checked,
@@ -514,6 +657,11 @@ class ClipForgeApp {
                 enabled: document.getElementById('scheduler-enabled').checked,
                 interval: document.getElementById('scheduler-interval').value,
                 max_per_day: parseInt(document.getElementById('max-per-day').value)
+            },
+            subtitle_settings: {
+                enabled: subtitleSettings.enabled,
+                style: subtitleSettings.style,
+                animated: subtitleSettings.animated
             }
         };
 

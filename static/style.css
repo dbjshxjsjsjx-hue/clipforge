@@ -884,3 +884,54 @@ body {
         font-size: 13px;
     }
 }
+
+/* Subtitle Settings */
+.color-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.color-input {
+    width: 48px;
+    height: 48px;
+    border: 2px solid #E5E7EB;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 2px;
+    background: white;
+}
+
+.color-input:hover {
+    border-color: #635BFF;
+}
+
+.color-label {
+    font-size: 14px;
+    color: #6B7280;
+}
+
+.subtitle-preview {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    text-align: center;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.subtitle-preview-text {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 48px;
+    color: #FFFFFF;
+    text-shadow: 4px 4px 0 #000000, -4px -4px 0 #000000, 4px -4px 0 #000000, -4px 4px 0 #000000;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1.2;
+    word-wrap: break-word;
+    max-width: 100%;
+}

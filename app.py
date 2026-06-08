@@ -347,9 +347,41 @@ def analyze_video():
         # Используем умный анализ
         segments = analyze_video_viral(str(video_path), min_duration=8, max_duration=60)
         
+        # Генерируем preview-клипы для каждого сегмента (первые 3 секунды)
+        previews = []
+        for seg in segments[:5]:  # Только топ-5 для preview
+            preview_name = f"preview_{uuid.uuid4().hex[:8]}.mp4"
+            preview_path = CLIPS_DIR / preview_name
+            
+            try:
+                # Создаем 3-секундный preview начиная с start сегмента
+                preview_start = seg['start']
+                preview_duration = min(3, seg['duration'])
+                
+                subprocess.run([
+                    'ffmpeg', '-y', '-i', str(video_path),
+                    '-ss', str(preview_start),
+                    '-t', str(preview_duration),
+                    '-vf', 'scale=480:-1',
+                    '-c:v', 'libx264', '-crf', '28', '-preset', 'ultrafast',
+                    '-c:a', 'aac', '-b:a', '64k',
+                    '-movflags', '+faststart',
+                    str(preview_path)
+                ], check=True, capture_output=True, timeout=30)
+                
+                previews.append({
+                    'segment_index': segments.index(seg),
+                    'url': f"/clips/{preview_name}",
+                    'start': preview_start,
+                    'duration': preview_duration
+                })
+            except Exception as e:
+                logger.warning(f"Failed to create preview for segment: {e}")
+        
         return jsonify({
             "status": "ok",
-            "segments": segments
+            "segments": segments,
+            "previews": previews
         })
     
     except Exception as e:
@@ -443,13 +475,24 @@ def create_clip():
         # Добавляем субтитры автоматически
         try:
             from subtitle_generator import add_subtitles_to_clip
-            subtitled_path = output_path.with_name(f"subtitled_{output_name}")
-            add_subtitles_to_clip(str(output_path), str(subtitled_path), language='auto')
-            # Заменяем оригинальный файл на версию с субтитрами
-            if subtitled_path.exists():
-                output_path.unlink()
-                subtitled_path.rename(output_path)
-                output_name = f"subtitled_{output_name}"
+            
+            # Получаем стиль субтитров из конфигурации или запроса
+            subtitle_style = data.get('subtitle_style', None)
+            subtitle_enabled = data.get('subtitles', True)
+            
+            if subtitle_enabled:
+                subtitled_path = output_path.with_name(f"subtitled_{output_name}")
+                add_subtitles_to_clip(
+                    str(output_path), 
+                    str(subtitled_path), 
+                    language='auto',
+                    style=subtitle_style
+                )
+                # Заменяем оригинальный файл на версию с субтитрами
+                if subtitled_path.exists():
+                    output_path.unlink()
+                    subtitled_path.rename(output_path)
+                    output_name = f"subtitled_{output_name}"
         except Exception as e:
             logger.warning(f"Subtitle generation failed: {e}")
         

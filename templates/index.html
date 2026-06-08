@@ -98,6 +98,95 @@
                         </svg>
                         <p>Пока нет клипов. Загрузите видео и создайте первый клип!</p>
                     </div>
+                <div class="card">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Субтитры
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="subtitles-enabled" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Включить субтитры</span>
+                        </label>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Шрифт</label>
+                        <select id="subtitle-font" class="select">
+                            <option value="Arial Black" selected>Arial Black (TikTok style)</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Montserrat">Montserrat</option>
+                        </select>
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Размер шрифта</span>
+                            <span id="subtitle-size-value">48</span>
+                        </div>
+                        <input type="range" id="subtitle-size" min="16" max="80" value="48" class="slider">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Цвет текста</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="subtitle-color" value="#FFFFFF" class="color-input">
+                            <span class="color-label">Белый</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Цвет обводки</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="subtitle-outline-color" value="#000000" class="color-input">
+                            <span class="color-label">Черный</span>
+                        </div>
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Толщина обводки</span>
+                            <span id="subtitle-outline-value">4</span>
+                        </div>
+                        <input type="range" id="subtitle-outline" min="0" max="10" value="4" class="slider">
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Отступ снизу</span>
+                            <span id="subtitle-margin-value">100</span>
+                        </div>
+                        <input type="range" id="subtitle-margin" min="20" max="300" value="100" class="slider">
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="subtitle-bold" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Жирный шрифт</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="subtitle-animated">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Word-by-word анимация (экспериментально)</span>
+                        </label>
+                    </div>
+
+                    <div class="subtitle-preview" id="subtitle-preview">
+                        <div class="subtitle-preview-text" style="font-family: 'Arial Black', Arial, sans-serif; font-size: 48px; color: #FFFFFF; text-shadow: 4px 4px 0 #000000, -4px -4px 0 #000000, 4px -4px 0 #000000, -4px 4px 0 #000000; text-align: center; font-weight: bold;">
+                            Пример субтитров
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
