@@ -1,0 +1,17 @@
+{
+  "youtube_accounts": [],
+  "ap_settings": {
+    "intensity": "auto",
+    "enabled": true
+  },
+  "scheduler": {
+    "enabled": false,
+    "interval": 60,
+    "max_per_day": 5,
+    "time_priority": "auto"
+  },
+  "templates": {
+    "default_category": "viral",
+    "auto_generate": true
+  }
+}

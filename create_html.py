@@ -1,0 +1,340 @@
+# This script creates the HTML template file
+import os
+
+os.makedirs('/workspace/clipforge-web/templates', exist_ok=True)
+
+html_content = '''<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipForge — Личный инструмент для клипов</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <polygon points="23 7 16 12 23 17 23 7"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                </div>
+                <h1>ClipForge</h1>
+            </div>
+            <div class="subtitle">Личный инструмент для клипов</div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Дашборд
+            </button>
+            <button class="nav-tab" data-tab="upload">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Загрузка
+            </button>
+            <button class="nav-tab" data-tab="clips">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="6" cy="6" r="3"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+                    <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+                    <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+                </svg>
+                Клипы
+            </button>
+            <button class="nav-tab" data-tab="settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Настройки
+            </button>
+        </nav>
+
+        <section class="tab-content active" id="tab-dashboard">
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-label">Всего клипов</div>
+                    <div class="kpi-value" id="stat-total-clips">0</div>
+                    <div class="kpi-delta">Создано сегодня</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">В очереди</div>
+                    <div class="kpi-value" id="stat-queue">0</div>
+                    <div class="kpi-delta">На публикацию</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Загружено</div>
+                    <div class="kpi-value" id="stat-uploads">0</div>
+                    <div class="kpi-delta">Видео файлов</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Размер</div>
+                    <div class="kpi-value" id="stat-size">0 MB</div>
+                    <div class="kpi-delta">Всего данных</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Последние клипы
+                </div>
+                <div id="recent-clips" class="clips-list">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#A5A5A5" stroke-width="1.5">
+                            <polygon points="23 7 16 12 23 17 23 7"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        </svg>
+                        <p>Пока нет клипов. Загрузите видео и создайте первый клип!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-upload">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Загрузка видео
+                    </div>
+                    
+                    <div class="drop-zone" id="drop-zone">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#635BFF" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <div class="drop-title">Перетащите видео сюда</div>
+                        <div class="drop-subtitle">или выберите файл</div>
+                        <input type="file" id="file-input" accept="video/*" hidden>
+                    </div>
+
+                    <div class="upload-progress" id="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">0%</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        Информация
+                    </div>
+                    <div class="alert-info">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2">
+                            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        <div>
+                            <strong>Автонарезка</strong><br>
+                            Загрузите видео, система автоматически найдет вирусные моменты
+                        </div>
+                    </div>
+                    <div class="alert-warning">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <div>
+                            <strong>АП-обход</strong><br>
+                            Настройте модификации в разделе "Настройки" перед созданием клипов
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="analysis-card" style="display: none;">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    Найденные моменты
+                </div>
+                <div id="segments-list" class="segments-list"></div>
+                <div class="batch-actions">
+                    <button class="btn btn-primary" id="create-all-btn">Создать все клипы</button>
+                    <button class="btn btn-secondary" id="create-selected-btn">Создать выбранные</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-clips">
+            <div class="card">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="23 7 16 12 23 17 23 7"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                    Созданные клипы
+                </div>
+                <div id="all-clips" class="clips-grid"></div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-settings">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Настройки АП-обхода
+                    </div>
+
+                    <div class="alert-warning">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        <div>
+                            <strong>Автоматический обход Content ID</strong><br>
+                            Модификация видео для избежания блокировки на YouTube
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ap-enabled" checked>
+                            <span class="toggle-slider"></span>
+                            <span>Включить АП-обход</span>
+                        </label>
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Изменение скорости</span>
+                            <span id="speed-value">0%</span>
+                        </div>
+                        <input type="range" id="speed-mod" min="-15" max="15" value="0" class="slider">
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Кадрирование (zoom)</span>
+                            <span id="zoom-value">0%</span>
+                        </div>
+                        <input type="range" id="zoom" min="0" max="20" value="0" class="slider">
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Цветокоррекция</span>
+                            <span id="color-value">0%</span>
+                        </div>
+                        <input type="range" id="color-shift" min="0" max="30" value="0" class="slider">
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="mirror">
+                            <span class="toggle-slider"></span>
+                            <span>Зеркальное отражение</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="add-border">
+                            <span class="toggle-slider"></span>
+                            <span>Добавить рамки/бордюры</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="audio-pitch">
+                            <span class="toggle-slider"></span>
+                            <span>Изменить тональность аудио</span>
+                        </label>
+                    </div>
+
+                    <div class="protection-level">
+                        <div class="protection-label">Уровень защиты от АП:</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="protection-bar" style="width: 0%"></div>
+                        </div>
+                        <div class="protection-text" id="protection-text">0% — Низкая защита</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="save-settings">Сохранить настройки</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Планировщик
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="scheduler-enabled">
+                            <span class="toggle-slider"></span>
+                            <span>Включить автопубликацию</span>
+                        </label>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Интервал между публикациями</label>
+                        <select id="scheduler-interval" class="select">
+                            <option value="30">Каждые 30 минут</option>
+                            <option value="60" selected>Каждый час</option>
+                            <option value="120">Каждые 2 часа</option>
+                            <option value="240">Каждые 4 часа</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Максимум публикаций в день</label>
+                        <input type="number" id="max-per-day" value="5" min="1" max="50" class="input">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal" id="processing-modal">
+        <div class="modal-content">
+            <div class="modal-title">Обработка видео</div>
+            <div class="spinner"></div>
+            <div class="modal-text" id="processing-text">Анализ видео...</div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>'''
+
+with open('/workspace/clipforge-web/templates/index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("HTML template created successfully")
