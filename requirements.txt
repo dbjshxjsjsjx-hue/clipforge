@@ -4,4 +4,4 @@ numpy
 schedule==1.2.0
 yt-dlp==2023.12.30
 pytest==7.4.0
-faster-whisper==1.0.3
+openai-whisper

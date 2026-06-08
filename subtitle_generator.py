@@ -28,13 +28,22 @@ class SubtitleGenerator:
         # Проверяем whisper (faster-whisper или whisper.cpp)
         self.whisper_backend = None
         
-        # Пробуем faster-whisper (Python)
+        # Пробуем оригинальный whisper (самый простой в установке)
         try:
-            import faster_whisper
-            self.whisper_backend = 'faster_whisper'
-            logger.info("Используется faster-whisper")
+            import whisper
+            self.whisper_backend = 'whisper'
+            logger.info("Используется оригинальный whisper")
         except ImportError:
             pass
+        
+        # Пробуем faster-whisper (Python, требует компиляции av)
+        if not self.whisper_backend:
+            try:
+                import faster_whisper
+                self.whisper_backend = 'faster_whisper'
+                logger.info("Используется faster-whisper")
+            except ImportError:
+                pass
         
         # Пробуем whisper.cpp (CLI)
         if not self.whisper_backend:
@@ -44,15 +53,6 @@ class SubtitleGenerator:
                     self.whisper_backend = 'whisper_cpp'
                     logger.info("Используется whisper.cpp")
             except FileNotFoundError:
-                pass
-        
-        # Пробуем оригинальный whisper
-        if not self.whisper_backend:
-            try:
-                import whisper
-                self.whisper_backend = 'whisper'
-                logger.info("Используется оригинальный whisper")
-            except ImportError:
                 pass
         
         if not self.whisper_backend:
