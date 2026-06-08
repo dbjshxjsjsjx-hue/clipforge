@@ -40,9 +40,24 @@ class ViralAnalyzer:
         segments.extend(dialog_segments)
         
         # 4. Если ничего не найдено, создаем fallback сегменты
-        if not segments and total_duration > 0:
+        if not segments:
             logger.warning("No segments found by analysis, creating fallback segments")
-            segments = self._create_fallback_segments(total_duration, min_duration, max_duration)
+            # Пробуем получить длительность еще раз через ffmpeg если ffprobe не сработал
+            if total_duration == 0:
+                total_duration = self._get_video_duration_ffmpeg(video_path)
+            
+            if total_duration > 0:
+                segments = self._create_fallback_segments(total_duration, min_duration, max_duration)
+            else:
+                # Если совсем ничего не работает, создаем один сегмент по умолчанию
+                logger.error("Cannot determine video duration, creating single default segment")
+                segments = [{
+                    'start': 0,
+                    'duration': min_duration,
+                    'score': 50,
+                    'type': 'fallback',
+                    'reason': 'Не удалось определить длительность видео'
+                }]
         
         # 5. ML-скоринг вирусности
         scored_segments = self._score_virality(segments, video_path)
@@ -57,17 +72,70 @@ class ViralAnalyzer:
     def _get_video_duration(self, video_path):
         """Получает длительность видео через ffprobe"""
         try:
-            result = subprocess.run([
-                'ffprobe', '-v', 'error', '-show_entries',
-                'format=duration', '-of', 'json', str(video_path)
-            ], capture_output=True, text=True, check=True)
+            # Используем shell=True на Windows для корректной обработки путей с пробелами и бэкслешами
+            import sys
+            if sys.platform == 'win32':
+                # На Windows используем список аргументов, но оборачиваем путь в кавычки
+                cmd = [
+                    'ffprobe', '-v', 'error', '-show_entries',
+                    'format=duration', '-of', 'json', video_path
+                ]
+            else:
+                cmd = [
+                    'ffprobe', '-v', 'error', '-show_entries',
+                    'format=duration', '-of', 'json', str(video_path)
+                ]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True, text=True, check=True,
+                encoding='utf-8', errors='ignore'
+            )
             
             info = json.loads(result.stdout)
             return float(info['format']['duration'])
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ffprobe failed: {e.stderr[:200] if e.stderr else 'no stderr'}")
+            # Fallback: пробуем через ffmpeg напрямую
+            try:
+                result = subprocess.run(
+                    ['ffmpeg', '-i', str(video_path)],
+                    capture_output=True, text=True
+                )
+                # Парсим длительность из stderr ffmpeg
+                import re
+                duration_match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})', result.stderr)
+                if duration_match:
+                    hours = int(duration_match.group(1))
+                    minutes = int(duration_match.group(2))
+                    seconds = float(duration_match.group(3))
+                    return hours * 3600 + minutes * 60 + seconds
+            except Exception as e2:
+                logger.error(f"ffmpeg fallback also failed: {e2}")
+            return 0
         except Exception as e:
             logger.error(f"Failed to get video duration: {e}")
             return 0
     
+    def _get_video_duration_ffmpeg(self, video_path):
+        """Fallback получения длительности через ffmpeg"""
+        try:
+            result = subprocess.run(
+                ['ffmpeg', '-i', video_path],
+                capture_output=True, text=True
+            )
+            # Парсим длительность из stderr ffmpeg
+            import re
+            duration_match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})', result.stderr)
+            if duration_match:
+                hours = int(duration_match.group(1))
+                minutes = int(duration_match.group(2))
+                seconds = float(duration_match.group(3))
+                return hours * 3600 + minutes * 60 + seconds
+        except Exception as e:
+            logger.error(f"ffmpeg duration fallback failed: {e}")
+        return 0
+
     def _create_fallback_segments(self, total_duration, min_duration, max_duration):
         """Создает равномерные сегменты если анализ не сработал"""
         segments = []
@@ -108,7 +176,7 @@ class ViralAnalyzer:
             # Проверяем есть ли аудиодорожка
             probe = subprocess.run([
                 'ffprobe', '-v', 'error', '-select_streams', 'a',
-                '-show_entries', 'stream=codec_type', '-of', 'json', str(video_path)
+                '-show_entries', 'stream=codec_type', '-of', 'json', video_path
             ], capture_output=True, text=True)
             
             if probe.returncode != 0 or 'audio' not in probe.stdout:
@@ -120,7 +188,7 @@ class ViralAnalyzer:
                 tmp_path = tmp.name
             
             result = subprocess.run([
-                'ffmpeg', '-y', '-i', str(video_path),
+                'ffmpeg', '-y', '-i', video_path,
                 '-vn', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '1',
                 tmp_path
             ], check=True, capture_output=True)
@@ -228,7 +296,7 @@ class ViralAnalyzer:
             # Сначала проверяем что видео имеет видеодорожку
             probe = subprocess.run([
                 'ffprobe', '-v', 'error', '-select_streams', 'v',
-                '-show_entries', 'stream=codec_type', '-of', 'json', str(video_path)
+                '-show_entries', 'stream=codec_type', '-of', 'json', video_path
             ], capture_output=True, text=True)
             
             if probe.returncode != 0 or 'video' not in probe.stdout:
@@ -237,7 +305,7 @@ class ViralAnalyzer:
             
             # Используем ffmpeg scene detection
             result = subprocess.run([
-                'ffmpeg', '-i', str(video_path),
+                'ffmpeg', '-i', video_path,
                 '-vf', 'select=gt(scene\,0.3),showinfo',
                 '-f', 'null', '-'
             ], capture_output=True, text=True)
@@ -284,7 +352,7 @@ class ViralAnalyzer:
             # Проверяем есть ли аудиодорожка
             probe = subprocess.run([
                 'ffprobe', '-v', 'error', '-select_streams', 'a',
-                '-show_entries', 'stream=codec_type', '-of', 'json', str(video_path)
+                '-show_entries', 'stream=codec_type', '-of', 'json', video_path
             ], capture_output=True, text=True)
             
             if probe.returncode != 0 or 'audio' not in probe.stdout:
@@ -296,7 +364,7 @@ class ViralAnalyzer:
                 tmp_path = tmp.name
             
             result = subprocess.run([
-                'ffmpeg', '-y', '-i', str(video_path),
+                'ffmpeg', '-y', '-i', video_path,
                 '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1',
                 tmp_path
             ], check=True, capture_output=True)
