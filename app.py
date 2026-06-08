@@ -380,7 +380,7 @@ def create_clip():
         '-ss', str(start),
         '-t', str(duration),
         # Вертикальный формат 9:16, 1080x1920
-        '-vf', 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gaussblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto',
+        '-vf', 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto',
         # Высокое качество видео
         '-c:v', 'libx264',
         '-crf', '18',  # Высокое качество (0-51, меньше = лучше, 18 = почти без потерь)
@@ -402,7 +402,7 @@ def create_clip():
         filters = get_ap_filters(ap_config.get('intensity', 'auto'))
         
         # Объединяем вертикальный формат с АП-фильтрами
-        vf_filters = 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gaussblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto'
+        vf_filters = 'split[original][copy];[copy]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=20[blurred];[original]scale=1080:1920:force_original_aspect_ratio=decrease[scaled];[blurred][scaled]overlay=(W-w)/2:(H-h)/2:format=auto'
         
         # Добавляем АП-фильтры если есть
         if filters.get('video_filters'):
