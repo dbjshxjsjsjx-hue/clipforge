@@ -242,6 +242,45 @@ def download_url():
                 '--fragment-retries', '10',
                 '-o', str(output_path),
                 url
+            ],
+            # Попытка 8: скачать как аудио + видео отдельно и склеить (для фрагментированных форматов)
+            [
+                'yt-dlp',
+                '--merge-output-format', 'mp4',
+                '-f', 'bestvideo[height<=1080]+bestaudio/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 9: скачать с YouTube Premium / без рекламы (более стабильные форматы)
+            [
+                'yt-dlp',
+                '--extractor-args', 'youtube:player_client=web;player_skip=webpage,configs,js',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 10: скачать с принудительным remux в mp4
+            [
+                'yt-dlp',
+                '--remux-video', 'mp4',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '-o', str(output_path),
+                url
             ]
         ]
         
@@ -263,18 +302,22 @@ def download_url():
             ])
         
         last_error = ""
-        for attempt_args in download_attempts:
+        for attempt_num, attempt_args in enumerate(download_attempts, 1):
+            logger.info(f"Download attempt {attempt_num}/{len(download_attempts)} for {url}")
             result = subprocess.run(
                 attempt_args,
                 capture_output=True, text=True, timeout=600
             )
             
             if result.returncode == 0 and output_path.exists():
+                logger.info(f"Download successful on attempt {attempt_num}")
                 break
             else:
                 last_error = result.stderr
+                logger.warning(f"Download attempt {attempt_num} failed: {last_error[:500]}")
         else:
             # Все попытки неудачны
+            logger.error(f"All download attempts failed for {url}")
             return jsonify({"error": f"Ошибка загрузки: {last_error}"}), 500
         
         if not output_path.exists():
@@ -285,6 +328,8 @@ def download_url():
         if file_size == 0:
             output_path.unlink()
             return jsonify({"error": "Загружен пустой файл"}), 500
+        
+        logger.info(f"Downloaded file size: {file_size} bytes")
         
         # Проверяем что файл является валидным видео через ffprobe
         try:
@@ -297,6 +342,8 @@ def download_url():
                 # Файл поврежден — пробуем исправить через ffmpeg
                 logger.warning(f"Downloaded file appears corrupted, attempting repair: {output_path}")
                 fixed_path = output_path.with_suffix('.fixed.mp4')
+                
+                # Сначала пробуем просто пересобрать контейнер
                 repair_result = subprocess.run([
                     'ffmpeg', '-y', '-i', str(output_path),
                     '-c', 'copy', '-movflags', '+faststart',
@@ -304,9 +351,53 @@ def download_url():
                 ], capture_output=True, text=True, timeout=120)
                 
                 if repair_result.returncode == 0 and fixed_path.exists() and fixed_path.stat().st_size > 0:
-                    output_path.unlink()
-                    fixed_path.rename(output_path)
-                    logger.info(f"File repaired successfully: {output_path}")
+                    # Проверяем что исправленный файл валиден
+                    fixed_probe = subprocess.run([
+                        'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                        '-of', 'json', str(fixed_path)
+                    ], capture_output=True, text=True, timeout=30)
+                    
+                    if fixed_probe.returncode == 0:
+                        output_path.unlink()
+                        fixed_path.rename(output_path)
+                        logger.info(f"File repaired successfully: {output_path}")
+                    else:
+                        # Простое копирование не помогло — пробуем перекодировать
+                        logger.warning(f"Container repair failed, trying full re-encode: {output_path}")
+                        reencoded_path = output_path.with_suffix('.reencoded.mp4')
+                        reencode_result = subprocess.run([
+                            'ffmpeg', '-y', '-i', str(output_path),
+                            '-c:v', 'libx264', '-crf', '23', '-preset', 'fast',
+                            '-c:a', 'aac', '-b:a', '128k',
+                            '-movflags', '+faststart',
+                            str(reencoded_path)
+                        ], capture_output=True, text=True, timeout=300)
+                        
+                        if reencode_result.returncode == 0 and reencoded_path.exists() and reencoded_path.stat().st_size > 0:
+                            reencoded_probe = subprocess.run([
+                                'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                                '-of', 'json', str(reencoded_path)
+                            ], capture_output=True, text=True, timeout=30)
+                            
+                            if reencoded_probe.returncode == 0:
+                                output_path.unlink()
+                                if fixed_path.exists():
+                                    fixed_path.unlink()
+                                reencoded_path.rename(output_path)
+                                logger.info(f"File re-encoded successfully: {output_path}")
+                            else:
+                                output_path.unlink()
+                                if fixed_path.exists():
+                                    fixed_path.unlink()
+                                reencoded_path.unlink()
+                                return jsonify({"error": "Загруженный файл поврежден и не удалось исправить даже перекодированием. Попробуйте другой URL или используйте cookies."}), 500
+                        else:
+                            output_path.unlink()
+                            if fixed_path.exists():
+                                fixed_path.unlink()
+                            if reencoded_path.exists():
+                                reencoded_path.unlink()
+                            return jsonify({"error": "Загруженный файл поврежден и не удалось исправить. Попробуйте другой URL или используйте cookies."}), 500
                 else:
                     output_path.unlink()
                     if fixed_path.exists():
@@ -318,6 +409,8 @@ def download_url():
                 if duration < 1:
                     output_path.unlink()
                     return jsonify({"error": f"Видео слишком короткое ({duration:.1f}с). Минимум 1 секунда."}), 400
+                
+                logger.info(f"Video validated: duration={duration:.1f}s, size={file_size} bytes")
         except Exception as e:
             logger.warning(f"Could not validate video file: {e}")
             # Не удалось проверить — продолжаем с предупреждением
