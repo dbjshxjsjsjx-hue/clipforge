@@ -152,7 +152,22 @@ def download_url():
         
     # Пробуем разные стратегии загрузки
         download_attempts = [
-            # Попытка 1: с обходом SABR через player_client=web_embedded
+            # Попытка 1: скачать с принудительным remux в mp4 (самая надежная для Windows)
+            [
+                'yt-dlp',
+                '--remux-video', 'mp4',
+                '--merge-output-format', 'mp4',
+                '-f', 'best[height<=1080][ext=mp4]/best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '--no-check-certificates',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 2: с обходом SABR через player_client=web_embedded
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=web_embedded',
@@ -162,10 +177,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 2: с обходом SABR через player_skip=webpage,configs,js
+            # Попытка 3: с обходом SABR через player_skip=webpage,configs,js
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_skip=webpage,configs,js;player_client=android',
@@ -175,10 +191,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 3: с User-Agent мобильного устройства
+            # Попытка 4: с User-Agent мобильного устройства
             [
                 'yt-dlp',
                 '--user-agent', 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -188,10 +205,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 4: с форматом mp4 и меньшим качеством
+            # Попытка 5: с форматом mp4 и меньшим качеством
             [
                 'yt-dlp',
                 '-f', 'best[ext=mp4][height<=720]/best[height<=720]/worst',
@@ -200,10 +218,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 5: с использованием iOS клиента
+            # Попытка 6: с использованием iOS клиента
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=ios',
@@ -213,10 +232,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 6: с использованием tv_embedded клиента (для длинных видео)
+            # Попытка 7: с использованием tv_embedded клиента (для длинных видео)
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=tv_embedded',
@@ -226,10 +246,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 7: с конкурентными фрагментами для ускорения
+            # Попытка 8: с конкурентными фрагментами для ускорения
             [
                 'yt-dlp',
                 '--concurrent-fragments', '5',
@@ -240,10 +261,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 8: скачать как аудио + видео отдельно и склеить (для фрагментированных форматов)
+            # Попытка 9: скачать как аудио + видео отдельно и склеить (для фрагментированных форматов)
             [
                 'yt-dlp',
                 '--merge-output-format', 'mp4',
@@ -253,10 +275,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 9: скачать с YouTube Premium / без рекламы (более стабильные форматы)
+            # Попытка 10: скачать с YouTube Premium / без рекламы (более стабильные форматы)
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=web;player_skip=webpage,configs,js',
@@ -266,10 +289,11 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 10: скачать с принудительным remux в mp4
+            # Попытка 11: скачать с принудительным remux в mp4
             [
                 'yt-dlp',
                 '--remux-video', 'mp4',
@@ -279,6 +303,68 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 12: скачать с --no-part (не использовать .part файлы)
+            [
+                'yt-dlp',
+                '--no-part',
+                '--remux-video', 'mp4',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '--no-check-certificates',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 13: скачать с --hls-prefer-native (использовать нативный HLS вместо ffmpeg)
+            [
+                'yt-dlp',
+                '--hls-prefer-native',
+                '--remux-video', 'mp4',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '--no-check-certificates',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 14: скачать с --prefer-free-formats (предпочитать свободные форматы)
+            [
+                'yt-dlp',
+                '--prefer-free-formats',
+                '--remux-video', 'mp4',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '--no-check-certificates',
+                '-o', str(output_path),
+                url
+            ],
+            # Попытка 15: скачать с --abort-on-unavailable-fragment (пропускать недоступные фрагменты)
+            [
+                'yt-dlp',
+                '--abort-on-unavailable-fragment',
+                '--skip-unavailable-fragments',
+                '--remux-video', 'mp4',
+                '-f', 'best[height<=1080]/best',
+                '--no-playlist',
+                '--no-update',
+                '--socket-timeout', '60',
+                '--retries', '10',
+                '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ]
@@ -297,6 +383,7 @@ def download_url():
                 '--socket-timeout', '60',
                 '--retries', '10',
                 '--fragment-retries', '10',
+                '--no-check-certificates',
                 '-o', str(output_path),
                 url
             ])
