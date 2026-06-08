@@ -152,7 +152,7 @@ def download_url():
         
     # Пробуем разные стратегии загрузки
         download_attempts = [
-            # Попытка 1: скачать с принудительным remux в mp4 (самая надежная для Windows)
+            # Попытка 1: скачать с принудительным remux в mp4 + отключение SSL (самая надежная для Windows)
             [
                 'yt-dlp',
                 '--remux-video', 'mp4',
@@ -164,10 +164,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 2: с обходом SABR через player_client=web_embedded
+            # Попытка 2: с обходом SABR через player_client=web_embedded + отключение SSL
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=web_embedded',
@@ -178,10 +181,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 3: с обходом SABR через player_skip=webpage,configs,js
+            # Попытка 3: с обходом SABR через player_skip=webpage,configs,js + отключение SSL
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_skip=webpage,configs,js;player_client=android',
@@ -192,10 +198,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 4: с User-Agent мобильного устройства
+            # Попытка 4: с User-Agent мобильного устройства + отключение SSL
             [
                 'yt-dlp',
                 '--user-agent', 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -206,10 +215,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 5: с форматом mp4 и меньшим качеством
+            # Попытка 5: с форматом mp4 и меньшим качеством + отключение SSL
             [
                 'yt-dlp',
                 '-f', 'best[ext=mp4][height<=720]/best[height<=720]/worst',
@@ -219,10 +231,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 6: с использованием iOS клиента
+            # Попытка 6: с использованием iOS клиента + отключение SSL
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=ios',
@@ -233,10 +248,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 7: с использованием tv_embedded клиента (для длинных видео)
+            # Попытка 7: с использованием tv_embedded клиента + отключение SSL
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=tv_embedded',
@@ -247,10 +265,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 8: с конкурентными фрагментами для ускорения
+            # Попытка 8: с конкурентными фрагментами + отключение SSL
             [
                 'yt-dlp',
                 '--concurrent-fragments', '5',
@@ -262,10 +283,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 9: скачать как аудио + видео отдельно и склеить (для фрагментированных форматов)
+            # Попытка 9: скачать как аудио + видео отдельно + отключение SSL
             [
                 'yt-dlp',
                 '--merge-output-format', 'mp4',
@@ -276,10 +300,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 10: скачать с YouTube Premium / без рекламы (более стабильные форматы)
+            # Попытка 10: скачать с YouTube Premium + отключение SSL
             [
                 'yt-dlp',
                 '--extractor-args', 'youtube:player_client=web;player_skip=webpage,configs,js',
@@ -290,10 +317,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 11: скачать с принудительным remux в mp4
+            # Попытка 11: скачать с принудительным remux + отключение SSL
             [
                 'yt-dlp',
                 '--remux-video', 'mp4',
@@ -304,10 +334,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 12: скачать с --no-part (не использовать .part файлы)
+            # Попытка 12: скачать с --no-part + отключение SSL
             [
                 'yt-dlp',
                 '--no-part',
@@ -319,10 +352,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 13: скачать с --hls-prefer-native (использовать нативный HLS вместо ffmpeg)
+            # Попытка 13: скачать с --hls-prefer-native + отключение SSL
             [
                 'yt-dlp',
                 '--hls-prefer-native',
@@ -334,10 +370,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 14: скачать с --prefer-free-formats (предпочитать свободные форматы)
+            # Попытка 14: скачать с --prefer-free-formats + отключение SSL
             [
                 'yt-dlp',
                 '--prefer-free-formats',
@@ -349,10 +388,13 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ],
-            # Попытка 15: скачать с --abort-on-unavailable-fragment (пропускать недоступные фрагменты)
+            # Попытка 15: скачать с --abort-on-unavailable-fragment + отключение SSL
             [
                 'yt-dlp',
                 '--abort-on-unavailable-fragment',
@@ -365,6 +407,9 @@ def download_url():
                 '--retries', '10',
                 '--fragment-retries', '10',
                 '--no-check-certificates',
+                '--no-check-certificate',
+                '--legacy-server-connect',
+                '--no-warnings',
                 '-o', str(output_path),
                 url
             ]
