@@ -23,10 +23,22 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # Настройка логирования
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('clipforge.log', encoding='utf-8')
+    ]
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Установить уровень логирования для всех модулей
+for handler in logging.root.handlers:
+    handler.setLevel(logging.DEBUG)
+
+logging.getLogger('werkzeug').setLevel(logging.INFO)
+
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 
 # Директории
@@ -827,9 +839,15 @@ def delete_clip(clip_id):
         return jsonify({"status": "ok"})
     return jsonify({"error": "Not found"}), 404
 
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """Serve uploaded video files with proper MIME type"""
+    return send_from_directory(UPLOADS_DIR, filename, mimetype='video/mp4')
+
 @app.route('/clips/<path:filename>')
 def serve_clip(filename):
-    return send_from_directory(CLIPS_DIR, filename)
+    """Serve clip video files with proper MIME type"""
+    return send_from_directory(CLIPS_DIR, filename, mimetype='video/mp4')
 
 @app.route('/api/queue', methods=['GET', 'POST'])
 def queue():

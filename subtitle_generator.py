@@ -278,6 +278,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                       output_path: str, style: Optional[Dict] = None):
         """Накладывает субтитры на видео (hardcoded)"""
         
+        logger.info(f"burn_subtitles: video={video_path}, subs={subtitle_path}, output={output_path}")
+        
         # Определяем формат субтитров
         ext = Path(subtitle_path).suffix.lower()
         
@@ -304,7 +306,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             str(output_path)
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
+        logger.info(f"Running ffmpeg command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, check=True, capture_output=True)
+        logger.info(f"ffmpeg completed: returncode={result.returncode}")
         logger.info(f"Субтитры наложены: {output_path}")
     
     def _srt_to_ass(self, srt_path: str, ass_path: str, style: Optional[Dict] = None):
@@ -358,16 +362,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         video_path = Path(video_path)
         output_path = Path(output_path)
         
+        logger.info(f"process_video: video={video_path}, output={output_path}, lang={language}, burn_in={burn_in}")
+        
         # Создаем временную директорию
         temp_dir = Path(tempfile.mkdtemp())
+        logger.info(f"Created temp dir: {temp_dir}")
         
         try:
             # 1. Извлекаем аудио
             audio_path = temp_dir / 'audio.wav'
+            logger.info(f"Extracting audio to {audio_path}")
             self.extract_audio(str(video_path), str(audio_path))
+            logger.info(f"Audio extracted successfully, size={audio_path.stat().st_size if audio_path.exists() else 0}")
             
             # 2. Распознаем речь
+            logger.info(f"Transcribing audio with language={language}")
             segments = self.transcribe(str(audio_path), language)
+            logger.info(f"Transcription complete: {len(segments)} segments found")
             
             if not segments:
                 logger.warning("Речь не распознана")
@@ -375,25 +386,43 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
             # 3. Создаем субтитры
             srt_path = temp_dir / 'subtitles.srt'
+            logger.info(f"Creating SRT: {srt_path}")
             self.segments_to_srt(segments, str(srt_path))
+            logger.info(f"SRT created, size={srt_path.stat().st_size if srt_path.exists() else 0}")
             
             if not burn_in:
+                logger.info("burn_in=False, returning SRT path only")
                 return str(srt_path), None
             
             # 4. Накладываем субтитры
             if style is None:
                 style = self.generate_tiktok_style()
+                logger.info(f"Using default TikTok style: {style}")
+            else:
+                logger.info(f"Using custom style: {style}")
             
             ass_path = temp_dir / 'subtitles.ass'
+            logger.info(f"Creating ASS: {ass_path}")
             self.segments_to_ass(segments, str(ass_path), style)
+            logger.info(f"ASS created, size={ass_path.stat().st_size if ass_path.exists() else 0}")
             
+            logger.info(f"Burning subtitles: video={video_path}, ass={ass_path}, output={output_path}")
             self.burn_subtitles(str(video_path), str(ass_path), str(output_path), style)
+            
+            if output_path.exists():
+                logger.info(f"Output file created: {output_path}, size={output_path.stat().st_size}")
+            else:
+                logger.error(f"Output file NOT created: {output_path}")
             
             return str(output_path), str(srt_path)
             
+        except Exception as e:
+            logger.error(f"process_video failed: {e}", exc_info=True)
+            raise
         finally:
             # Очищаем временные файлы
             import shutil
+            logger.info(f"Cleaning up temp dir: {temp_dir}")
             shutil.rmtree(temp_dir, ignore_errors=True)
     
     def process_video_with_segments(self, video_path: str, segments: List[Dict],
@@ -459,6 +488,13 @@ def burn_subtitles_ffmpeg(video_path: str, srt_path: str, output_path: str,
 def add_subtitles_to_clip(video_path: str, output_path: str, 
                          language: str = 'auto', style: Optional[Dict] = None) -> str:
     """Полный pipeline: генерация + наложение субтитров"""
-    gen = get_subtitle_generator()
-    output, _ = gen.process_video(video_path, output_path, language, burn_in=True, style=style)
-    return output
+    logger.info(f"add_subtitles_to_clip called: video={video_path}, output={output_path}, lang={language}, style={style}")
+    try:
+        gen = get_subtitle_generator()
+        logger.info(f"Subtitle generator initialized, backend={gen.whisper_backend}")
+        output, srt_path = gen.process_video(video_path, output_path, language, burn_in=True, style=style)
+        logger.info(f"Subtitle processing complete: output={output}, srt={srt_path}")
+        return output
+    except Exception as e:
+        logger.error(f"add_subtitles_to_clip failed: {e}", exc_info=True)
+        raise
