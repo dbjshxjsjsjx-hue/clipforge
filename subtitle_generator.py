@@ -282,8 +282,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ext = Path(subtitle_path).suffix.lower()
         
         if ext == '.ass':
-            # ASS субтитры с кастомными стилями
-            vf = f"subtitles={subtitle_path}:force_style='\'"
+            # ASS субтитры с кастомными стилями (уже применены в _srt_to_ass)
+            vf = f"subtitles={subtitle_path}"
         elif ext == '.srt':
             # SRT субтитры - конвертируем в ASS для лучшего контроля стилей
             ass_path = str(Path(subtitle_path).with_suffix('.ass'))

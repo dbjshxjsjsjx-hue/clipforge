@@ -146,11 +146,10 @@ def download_url():
         url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
         output_name = f"url_{url_hash}.mp4"
         output_path = UPLOADS_DIR / output_name
-        
+
         # Скачиваем через yt-dlp с дополнительными опциями для обхода ограничений
         import subprocess
-        
-    # Пробуем разные стратегии загрузки
+        # Пробуем разные стратегии загрузки
         download_attempts = [
             # Попытка 1: скачать с принудительным remux в mp4 (самая надежная для Windows)
             [
@@ -586,7 +585,7 @@ def analyze_video():
                     'ffmpeg', '-y', '-i', str(video_path),
                     '-ss', str(preview_start),
                     '-t', str(preview_duration),
-                    '-vf', 'scale=480:-1',
+                    '-vf', 'scale=480:-2',
                     '-c:v', 'libx264', '-crf', '28', '-preset', 'ultrafast',
                     '-c:a', 'aac', '-b:a', '64k',
                     '-movflags', '+faststart',
@@ -613,12 +612,14 @@ def analyze_video():
 
 @app.route('/api/create-clip', methods=['POST'])
 def create_clip():
+    print("DEBUG create_clip entered")
+    logger.info(f"create_clip called with data: {request.json}")
     data = request.json
     video_path = UPLOADS_DIR / data.get('filename')
     start = data.get('start', 0)
     duration = data.get('duration', 15)
     config = load_config()
-    
+
     if not video_path.exists():
         return jsonify({"error": "File not found"}), 404
     
@@ -699,26 +700,37 @@ def create_clip():
         # Добавляем субтитры автоматически
         try:
             from subtitle_generator import add_subtitles_to_clip
-            
+
             # Получаем стиль субтитров из конфигурации или запроса
             subtitle_style = data.get('subtitle_style', None)
             subtitle_enabled = data.get('subtitles', True)
-            
+
+            logger.info(f"Subtitle processing: enabled={subtitle_enabled}, style={subtitle_style}")
+
             if subtitle_enabled:
                 subtitled_path = output_path.with_name(f"subtitled_{output_name}")
                 add_subtitles_to_clip(
-                    str(output_path), 
-                    str(subtitled_path), 
+                    str(output_path),
+                    str(subtitled_path),
                     language='auto',
                     style=subtitle_style
                 )
                 # Заменяем оригинальный файл на версию с субтитрами
                 if subtitled_path.exists():
-                    output_path.unlink()
-                    subtitled_path.rename(output_path)
+                    logger.info(f"Subtitled file created: {subtitled_path}")
+                    try:
+                        # Попытка атомарного переименования (Windows может требовать shutil.move)
+                        output_path.unlink()
+                        subtitled_path.rename(output_path)
+                    except Exception as rename_e:
+                        logger.warning(f"Rename failed, trying shutil.move: {rename_e}")
+                        import shutil
+                        shutil.move(str(subtitled_path), str(output_path))
                     output_name = f"subtitled_{output_name}"
+                else:
+                    logger.warning(f"Subtitled file not found after generation: {subtitled_path}")
         except Exception as e:
-            logger.warning(f"Subtitle generation failed: {e}")
+            logger.warning(f"Subtitle generation failed: {e}", exc_info=True)
         
         # Логируем создание клипа
         file_size = output_path.stat().st_size

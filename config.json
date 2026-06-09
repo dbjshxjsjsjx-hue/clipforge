@@ -1,17 +1,35 @@
 {
-  "youtube_accounts": [],
   "ap_settings": {
-    "intensity": "auto",
-    "enabled": true
+    "enabled": true,
+    "auto": true,
+    "speed_mod": 0,
+    "zoom": 2,
+    "color_shift": 5,
+    "mirror": true,
+    "add_border": false,
+    "audio_pitch": false
   },
   "scheduler": {
     "enabled": false,
-    "interval": 60,
-    "max_per_day": 5,
-    "time_priority": "auto"
+    "interval": "60",
+    "max_per_day": 5
   },
-  "templates": {
-    "default_category": "viral",
-    "auto_generate": true
+  "subtitle_settings": {
+    "enabled": true,
+    "style": {
+      "fontname": "Arial Black",
+      "fontsize": "48",
+      "primarycolour": "&H00FFFFFF",
+      "outlinecolour": "&H00000000",
+      "backcolour": "&H00000000",
+      "bold": "1",
+      "italic": "0",
+      "borderstyle": "1",
+      "outline": "4",
+      "shadow": "2",
+      "alignment": "2",
+      "marginv": "100"
+    },
+    "animated": false
   }
 }
