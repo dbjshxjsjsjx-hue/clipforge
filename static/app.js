@@ -243,6 +243,7 @@ class ClipForgeApp {
 
             if (result.status === 'ok') {
                 this.segments = result.segments;
+                this.previews = result.previews || [];
                 this.showSegments(result.segments);
             } else {
                 alert('Analysis failed: ' + result.error);
@@ -315,21 +316,31 @@ class ClipForgeApp {
         const previewTitle = document.getElementById('preview-segment-title');
         const previewMeta = document.getElementById('preview-segment-meta');
         
-        if (!previewVideo.src) {
+        // Ищем готовый preview-клип для этого сегмента
+        const preview = (this.previews || []).find(p => p.segment_index === index);
+        
+        if (preview) {
+            // Используем готовый preview-клип (уже обрезан на нужный момент)
+            previewVideo.src = preview.url;
+            previewVideo.currentTime = 0;
+            previewVideo.play();
+        } else {
+            // Fallback: перематываем в большом видео и проигрываем нужный отрезок
             previewVideo.src = `/uploads/${this.currentVideo.filename}`;
+            previewVideo.addEventListener('loadedmetadata', () => {
+                previewVideo.currentTime = segment.start;
+                previewVideo.play();
+                
+                const pauseTimeout = setTimeout(() => {
+                    previewVideo.pause();
+                }, segment.duration * 1000);
+                
+                previewVideo.addEventListener('pause', () => {
+                    clearTimeout(pauseTimeout);
+                }, { once: true });
+            }, { once: true });
+            previewVideo.load();
         }
-        
-        previewVideo.currentTime = segment.start;
-        previewVideo.play();
-        
-        // Auto-pause after segment duration
-        const pauseTimeout = setTimeout(() => {
-            previewVideo.pause();
-        }, segment.duration * 1000);
-        
-        previewVideo.addEventListener('pause', () => {
-            clearTimeout(pauseTimeout);
-        }, { once: true });
         
         previewTitle.textContent = `Момент ${index + 1}`;
         previewMeta.textContent = `Начало: ${segment.start}с | Длительность: ${segment.duration}с | Оценка: ${segment.score} | ${segment.type}`;
@@ -340,7 +351,7 @@ class ClipForgeApp {
                 this.formatTime(previewVideo.currentTime);
             document.getElementById('preview-duration').textContent = 
                 this.formatTime(previewVideo.duration || 0);
-        }, { once: true });
+        });
     }
 
     formatTime(seconds) {
@@ -366,6 +377,7 @@ class ClipForgeApp {
 
         // Get subtitle settings from UI
         const subtitleSettings = this.getSubtitleSettings();
+        let subtitleErrors = [];
 
         for (const index of indices) {
             const segment = this.segments[index];
@@ -373,7 +385,7 @@ class ClipForgeApp {
                 `Создание клипа ${index + 1} из ${indices.length}...`;
 
             try {
-                await fetch('/api/create-clip', {
+                const resp = await fetch('/api/create-clip', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -386,6 +398,10 @@ class ClipForgeApp {
                         subtitle_style: subtitleSettings.style
                     })
                 });
+                const respData = await resp.json();
+                if (respData.subtitle_error && !subtitleErrors.includes(respData.subtitle_error)) {
+                    subtitleErrors.push(respData.subtitle_error);
+                }
             } catch (e) {
                 console.error('Failed to create clip:', e);
             }
@@ -394,7 +410,12 @@ class ClipForgeApp {
         this.hideModal();
         this.loadClips();
         this.loadStats();
-        alert('Клипы созданы!');
+        
+        if (subtitleErrors.length > 0) {
+            alert('Клипы созданы, но субтитры не добавлены:\n' + subtitleErrors.join('\n'));
+        } else {
+            alert('Клипы созданы!');
+        }
     }
 
     getSubtitleSettings() {

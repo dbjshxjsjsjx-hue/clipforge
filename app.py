@@ -627,36 +627,41 @@ def analyze_video():
         # Используем умный анализ
         segments = analyze_video_viral(str(video_path), min_duration=8, max_duration=60)
         
-        # Генерируем preview-клипы для каждого сегмента (первые 3 секунды)
+        # Генерируем preview-клипы для каждого сегмента (полная длительность момента)
         previews = []
-        for seg in segments[:5]:  # Только топ-5 для preview
+        for idx, seg in enumerate(segments[:5]):  # Только топ-5 для preview
             preview_name = f"preview_{uuid.uuid4().hex[:8]}.mp4"
             preview_path = CLIPS_DIR / preview_name
             
             try:
-                # Создаем 3-секундный preview начиная с start сегмента
+                # Создаем preview на ПОЛНУЮ длительность момента
                 preview_start = seg['start']
-                preview_duration = min(3, seg['duration'])
+                preview_duration = seg['duration']
+                
+                logger.info(f"Creating preview for segment {idx}: start={preview_start}, duration={preview_duration}")
                 
                 subprocess.run([
-                    'ffmpeg', '-y', '-i', str(video_path),
+                    'ffmpeg', '-y',
                     '-ss', str(preview_start),
+                    '-i', str(video_path),
                     '-t', str(preview_duration),
                     '-vf', 'scale=480:-2',
                     '-c:v', 'libx264', '-crf', '28', '-preset', 'ultrafast',
                     '-c:a', 'aac', '-b:a', '64k',
                     '-movflags', '+faststart',
                     str(preview_path)
-                ], check=True, capture_output=True, timeout=30)
+                ], check=True, capture_output=True, timeout=60)
+                
+                logger.info(f"Preview created: {preview_name}, size={preview_path.stat().st_size if preview_path.exists() else 0}")
                 
                 previews.append({
-                    'segment_index': segments.index(seg),
+                    'segment_index': idx,
                     'url': f"/clips/{preview_name}",
                     'start': preview_start,
                     'duration': preview_duration
                 })
             except Exception as e:
-                logger.warning(f"Failed to create preview for segment: {e}")
+                logger.warning(f"Failed to create preview for segment {idx}: {e}")
         
         return jsonify({
             "status": "ok",
@@ -755,6 +760,7 @@ def create_clip():
         subprocess.run(cmd, check=True, capture_output=True)
         
         # Добавляем субтитры автоматически
+        subtitle_error = None
         try:
             from subtitle_generator import add_subtitles_to_clip
 
@@ -766,12 +772,13 @@ def create_clip():
 
             if subtitle_enabled:
                 subtitled_path = output_path.with_name(f"subtitled_{output_name}")
-                add_subtitles_to_clip(
+                result_path = add_subtitles_to_clip(
                     str(output_path),
                     str(subtitled_path),
                     language='auto',
                     style=subtitle_style
                 )
+                logger.info(f"add_subtitles_to_clip returned: {result_path}")
                 # Заменяем оригинальный файл на версию с субтитрами
                 if subtitled_path.exists():
                     logger.info(f"Subtitled file created: {subtitled_path}")
@@ -786,8 +793,16 @@ def create_clip():
                     output_name = f"subtitled_{output_name}"
                 else:
                     logger.warning(f"Subtitled file not found after generation: {subtitled_path}")
+                    subtitle_error = "Файл с субтитрами не был создан (возможно речь не распознана)"
+        except ImportError as e:
+            logger.error(f"Subtitle module import failed: {e}", exc_info=True)
+            subtitle_error = "Модуль субтитров не установлен (pip install openai-whisper)"
+        except RuntimeError as e:
+            logger.error(f"Subtitle runtime error: {e}", exc_info=True)
+            subtitle_error = str(e)
         except Exception as e:
-            logger.warning(f"Subtitle generation failed: {e}", exc_info=True)
+            logger.error(f"Subtitle generation failed: {e}", exc_info=True)
+            subtitle_error = f"Ошибка генерации субтитров: {str(e)}"
         
         # Логируем создание клипа
         file_size = output_path.stat().st_size
@@ -811,7 +826,8 @@ def create_clip():
                 "duration": duration,
                 "path": str(output_path),
                 "created": datetime.now().isoformat()
-            }
+            },
+            "subtitle_error": subtitle_error
         })
     except subprocess.CalledProcessError as e:
         log_processing('create_clip', str(video_path), str(output_path), duration, False, e.stderr.decode())

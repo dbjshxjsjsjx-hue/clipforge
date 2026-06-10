@@ -19,9 +19,11 @@ class SubtitleGenerator:
     
     def _check_dependencies(self):
         """Проверяет наличие необходимых зависимостей"""
+        logger.info("Checking subtitle dependencies...")
         # Проверяем ffmpeg
         try:
             subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+            logger.info("ffmpeg found")
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("FFmpeg не найден. Установите: sudo apt install ffmpeg")
         
@@ -32,9 +34,9 @@ class SubtitleGenerator:
         try:
             import whisper
             self.whisper_backend = 'whisper'
-            logger.info("Используется оригинальный whisper")
-        except ImportError:
-            pass
+            logger.info("Используется оригинальный whisper (openai-whisper)")
+        except ImportError as e:
+            logger.info(f"openai-whisper not available: {e}")
         
         # Пробуем faster-whisper (Python, требует компиляции av)
         if not self.whisper_backend:
@@ -42,8 +44,8 @@ class SubtitleGenerator:
                 import faster_whisper
                 self.whisper_backend = 'faster_whisper'
                 logger.info("Используется faster-whisper")
-            except ImportError:
-                pass
+            except ImportError as e:
+                logger.info(f"faster-whisper not available: {e}")
         
         # Пробуем whisper.cpp (CLI)
         if not self.whisper_backend:
@@ -52,17 +54,20 @@ class SubtitleGenerator:
                 if result.returncode == 0:
                     self.whisper_backend = 'whisper_cpp'
                     logger.info("Используется whisper.cpp")
-            except FileNotFoundError:
-                pass
+            except FileNotFoundError as e:
+                logger.info(f"whisper.cpp not available: {e}")
         
         if not self.whisper_backend:
+            logger.error("No whisper backend found!")
             raise RuntimeError(
                 "Не найден ни один из whisper бэкендов.\n"
                 "Установите один из:\n"
-                "  pip install faster-whisper\n"
                 "  pip install openai-whisper\n"
+                "  pip install faster-whisper\n"
                 "  или установите whisper.cpp"
             )
+        
+        logger.info(f"Subtitle backend selected: {self.whisper_backend}")
     
     def extract_audio(self, video_path: str, output_path: Optional[str] = None) -> str:
         """Извлекает аудио из видео"""
